@@ -52,3 +52,10 @@ label { display: grid; gap: 0.3rem; color: var(--muted); font-weight: 600; font-
 .lnote { margin-top: 0.3rem; padding: 0.5rem 0.7rem; border-radius: 0.8rem; background: #fff6d8; color: #4a3a12; font-size: 0.88rem; white-space: pre-wrap; }
 .made { margin-top: 1rem; padding: 1rem; border-radius: 1.1rem; background: var(--grape-l); } .made pre { margin: 0.5rem 0 0.8rem; white-space: pre-wrap; font: 500 0.92rem var(--sans); word-break: break-word; }
 @media (max-width: 720px) { .urow { grid-template-columns: auto 1fr auto; } .useen { display: none; } .grid2, .lrow { grid-template-columns: 1fr; } .facts { grid-template-columns: 1fr 1fr; } }
+.tag.plus { background: linear-gradient(135deg, #ffe9a8, #ffd0e0); color: #6b3d00; }
+.plans { display: grid; gap: 0.6rem; margin: 0.8rem 0; }
+.plan-pick { display: grid; gap: 0.15rem; padding: 0.9rem 1rem; border: 2px solid var(--line); border-radius: 1.1rem; background: #fff; text-align: left; }
+.plan-pick:hover { border-color: var(--grape); background: var(--grape-l); } .plan-pick small { color: var(--muted); }
+.plan-pick.plus { background: linear-gradient(135deg, #fff8e0, #ffeef4); border-color: #f3d6a0; }
+#t-presets button.on { background: var(--grape); color: #fff; }
+.logrow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-top: 1px solid var(--line); font-size: 0.92rem; } .logrow:first-of-type { border-top: 0; } .logrow small { color: var(--muted); white-space: nowrap; }
