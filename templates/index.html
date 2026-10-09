@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f5f7ff">
+  <title>Cramly Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/control.css?v={{ v }}">
+  <script defer src="/static/control.js?v={{ v }}"></script>
+</head>
+<body data-configured="{{ 'yes' if configured else 'no' }}">
+  <main class="login" id="login" hidden>
+    <form class="login-card" id="login-form" autocomplete="off">
+      <div class="brand"><span class="logo">C</span><div><b>Cramly Control</b><small>Private owner panel</small></div></div>
+      {% if not configured %}
+      <p class="note">One setup step first. On the server add <b>CONTROL_PASSWORD</b> (12+ characters), <b>CRAMLY_URL</b> and <b>ADMIN_KEY</b> (the same one Cramly uses), then redeploy.</p>
+      {% endif %}
+      <label>Password<input id="pw" type="password" autocomplete="current-password" placeholder="Your control password" required></label>
+      <p class="err" id="login-err" hidden></p>
+      <button class="btn primary big" type="submit">Open the panel</button>
+    </form>
+  </main>
+
+  <div class="shell" id="shell" hidden>
+    <header class="bar">
+      <div class="brand"><span class="logo">C</span><div><b>Cramly Control</b><small id="health">Checking…</small></div></div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="overview" class="on">Overview</button><button data-tab="accounts">Accounts</button><button data-tab="links">Links</button>
+      </nav>
+      <button class="btn small" id="logout" type="button">Sign out</button>
+    </header>
+    <main class="page" id="page"></main>
+  </div>
+  <div class="toasts" id="toasts"></div>
+  <dialog class="modal" id="modal"><div id="modal-body"></div></dialog>
+</body>
+</html>
