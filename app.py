@@ -1,7 +1,7 @@
 """Cramly Control: the owner's private admin site. It is a separate website with its own password; it never touches Cramly's
 database. Every action goes to Cramly's owner API over HTTPS, signed with the shared ADMIN_KEY that lives only on the servers.
 
-  CONTROL_PASSWORD   what you type to open this site (12+ characters)
+  CONTROL_PASSWORD   what you type to open this site (6+ characters; longer is safer)
   CRAMLY_URL         where Cramly lives, e.g. https://cramly-twz5.onrender.com
   ADMIN_KEY          the same ADMIN_KEY you set on Cramly
   SECRET_KEY         signs the login cookie (any long random text)
@@ -39,7 +39,7 @@ def cramly_url():
 
 
 def configured():
-    return len(os.environ.get("CONTROL_PASSWORD", "")) >= 12 and bool(cramly_url()) and len(os.environ.get("ADMIN_KEY", "")) >= 12
+    return len(os.environ.get("CONTROL_PASSWORD", "")) >= 6 and bool(cramly_url()) and len(os.environ.get("ADMIN_KEY", "")) >= 12
 
 
 def too_many(bucket, limit, window=600):
@@ -70,10 +70,13 @@ def index():
 def login():
     if not configured():
         return jsonify(error="Not set up yet. Add CONTROL_PASSWORD, CRAMLY_URL and ADMIN_KEY on the server."), 503
+    if len([t for t in _tries.get("fails", []) if time.time() - t < 3600]) >= 20:
+        return jsonify(error="Too many wrong passwords from everywhere. Locked for an hour."), 429
     if too_many(request.remote_addr or "?", 6):
         return jsonify(error="Too many tries. Wait ten minutes."), 429
     given = str((request.get_json(silent=True) or {}).get("password") or "")
     if not hmac.compare_digest(given.encode(), os.environ["CONTROL_PASSWORD"].encode()):
+        _tries.setdefault("fails", []).append(time.time())
         return jsonify(error="Wrong password."), 403
     session.clear()
     session.permanent = True

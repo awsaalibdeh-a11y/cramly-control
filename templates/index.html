@@ -15,7 +15,7 @@
     <form class="login-card" id="login-form" autocomplete="off">
       <div class="brand"><span class="logo">C</span><div><b>Cramly Control</b><small>Private owner panel</small></div></div>
       {% if not configured %}
-      <p class="note">One setup step first. On the server add <b>CONTROL_PASSWORD</b> (12+ characters), <b>CRAMLY_URL</b> and <b>ADMIN_KEY</b> (the same one Cramly uses), then redeploy.</p>
+      <p class="note">One setup step first. On the server add <b>CONTROL_PASSWORD</b>, <b>CRAMLY_URL</b> and <b>ADMIN_KEY</b> (the same one Cramly uses), then redeploy.</p>
       {% endif %}
       <label>Password<input id="pw" type="password" autocomplete="current-password" placeholder="Your control password" required></label>
       <p class="err" id="login-err" hidden></p>

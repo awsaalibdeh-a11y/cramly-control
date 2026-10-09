@@ -6,7 +6,7 @@ Environment variables (set on the server, never in git):
 
 | name | what |
 | --- | --- |
-| `CONTROL_PASSWORD` | what you type to open the panel (12+ characters) |
+| `CONTROL_PASSWORD` | what you type to open the panel (6+ characters; longer is safer) |
 | `CRAMLY_URL` | where Cramly lives, e.g. `https://cramly-twz5.onrender.com` |
 | `ADMIN_KEY` | the same `ADMIN_KEY` set on Cramly (12+ characters) |
 | `SECRET_KEY` | signs the login cookie (any long random text) |

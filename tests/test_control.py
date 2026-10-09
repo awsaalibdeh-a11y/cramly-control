@@ -61,6 +61,13 @@ class Control(unittest.TestCase):
         with mock.patch.dict(os.environ, {"CONTROL_PASSWORD": "short"}):
             self.assertEqual(self.c.post("/login", json={"password": "short"}).status_code, 503)
 
+    def test_six_digit_password_works_and_global_lockout_kicks_in(self):
+        with mock.patch.dict(os.environ, {"CONTROL_PASSWORD": "test-pw-6"}):
+            self.assertEqual(self.c.post("/login", json={"password": "test-pw-6"}).status_code, 200)
+            control._tries.clear()
+            control._tries["fails"] = [__import__("time").time()] * 20
+            self.assertEqual(self.c.post("/login", json={"password": "test-pw-6"}).status_code, 429)
+
 
 if __name__ == "__main__":
     unittest.main()
