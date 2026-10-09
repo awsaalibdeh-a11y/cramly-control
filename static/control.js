@@ -254,6 +254,7 @@ async function linksTab() {
 
 /* ============================================================ requests: people asking for a plan; you choose free or pay */
 const PLAN_LABEL = { premium: "Premium", plus: "Premium Plus" };
+const KIND_LABEL = { premium: "Premium request", question: "❓ Question", bug: "🐞 Problem", idea: "💡 Idea" };
 let reqs = [];
 async function badge() {
   try {
@@ -273,6 +274,7 @@ function decideDialog(kind, r) {
     free: { title: `Give ${r.name} a free plan 🎁`, text: "It unlocks right away and they get a message that it is a gift.", body: `${planPick}${days}<label>A note for them (optional)<textarea id="d-note" maxlength="600" placeholder="e.g. Good luck on the exam!"></textarea></label>`, ok: "Give it free", cls: "good" },
     pay: { title: `Ask ${r.name} to pay 💳`, text: "They get a message with the price and how to pay. It unlocks when you press Mark paid.", body: `${planPick}<label>Price<input id="d-price" maxlength="40" value="$2.99" placeholder="e.g. $2.99"></label><label>How should they pay?<textarea id="d-note" maxlength="600" placeholder="e.g. Send it to my PayPal, then reply here."></textarea></label>`, ok: "Send payment message", cls: "primary" },
     paid: { title: `Mark ${r.name} as paid ✅`, text: "This unlocks their plan now and tells them thank you.", body: `${planPick}${days}`, ok: "Unlock their plan", cls: "good" },
+    reply: { title: `Reply to ${r.name} 💬`, text: "They get your reply as a message in the app.", body: `<label>Your reply<textarea id="d-note" maxlength="600" placeholder="Write your answer"></textarea></label>`, ok: "Send reply", cls: "primary" },
     declined: { title: `Decline ${r.name}?`, text: "They get a polite message. The free tools stay open for them.", body: `<label>Your message (optional)<textarea id="d-note" maxlength="600" placeholder="Thanks for asking. Not right now."></textarea></label>`, ok: "Decline", cls: "bad" },
   }[kind];
   return openDialog(`<h3>${forms.title}</h3><p class="muted">${forms.text}</p>${forms.body}<div class="row end"><button class="btn" id="d-no" type="button">Cancel</button><button class="btn ${forms.cls}" id="d-ok" type="button">${forms.ok}</button></div>`, (finish) => {
@@ -281,11 +283,12 @@ function decideDialog(kind, r) {
   });
 }
 async function decide(kind, r) {
-  const t = await decideDialog(kind, r);
+  const t = kind === "close" ? { decision: "close" } : await decideDialog(kind, r);
   if (!t) return;
+  if (t.decision === "reply" && !t.note.trim()) return toast("Write your reply first.", true);
   try {
     await call(`/api/admin/requests/${r.id}/decide`, "POST", t);
-    toast({ free: `${r.name} got a free plan 🎁`, pay: `Asked ${r.name} to pay`, paid: `${r.name} is unlocked`, declined: `Declined ${r.name}` }[kind]);
+    toast({ free: `${r.name} got a free plan 🎁`, pay: `Asked ${r.name} to pay`, paid: `${r.name} is unlocked`, declined: `Declined ${r.name}`, reply: `Replied to ${r.name}`, close: "Closed" }[kind]);
     requestsTab(); badge();
   } catch (e) { toast(`Did not work: ${e.message}`, true); }
 }
@@ -294,13 +297,15 @@ async function requestsTab() {
   const open = reqs.filter((r) => r.status === "pending"), waiting = reqs.filter((r) => r.status === "pay"), done = reqs.filter((r) => !["pending", "pay"].includes(r.status));
   const when = (r) => ago(r.created);
   const card = (r) => `<article class="req ${r.status}" data-id="${r.id}"><div class="req-head"><span class="av">${esc((r.name || "?")[0].toUpperCase())}</span><b>${esc(r.name)}</b>
-      <span class="tag ${r.plan === "plus" ? "plus" : ""}">${PLAN_LABEL[r.plan]}</span>${r.status === "pay" ? `<span class="tag pay">waiting to pay ${esc(r.price)}</span>` : ""}<small>${when(r)}</small></div>
+      ${r.kind === "premium" ? `<span class="tag ${r.plan === "plus" ? "plus" : ""}">${PLAN_LABEL[r.plan]}</span>` : `<span class="tag">${KIND_LABEL[r.kind]}</span>`}${r.status === "pay" ? `<span class="tag pay">waiting to pay ${esc(r.price)}</span>` : ""}<small>${when(r)}</small></div>
       <p class="req-msg ${r.message ? "" : "none"}">${esc(r.message || "No message, they just asked.")}</p>
-      ${r.exists ? `<div class="acts">${r.status === "pending"
+      ${r.exists ? `<div class="acts">${r.status === "pending" && r.kind !== "premium"
+        ? `<button class="btn primary" data-k="reply">💬 Reply</button><button class="btn good" data-k="free">🎁 Give premium free</button><button class="btn" data-k="close">Close</button>`
+        : r.status === "pending"
         ? `<button class="btn good" data-k="free">🎁 Give free</button><button class="btn" data-k="pay">💳 Ask to pay</button><button class="btn danger" data-k="declined">Decline</button>`
         : `<button class="btn good" data-k="paid">✅ Mark paid and unlock</button><button class="btn" data-k="free">🎁 Give free instead</button><button class="btn danger" data-k="declined">Cancel</button>`}</div>` : '<p class="muted small">That account was deleted.</p>'}</article>`;
-  const old = (r) => `<div class="logrow"><span><b>${esc(r.name)}</b> asked for ${PLAN_LABEL[r.plan]}: <span class="tag ${r.status === "declined" ? "bad" : "done"}">${{ free: "given free", paid: "paid", declined: "declined" }[r.status] || r.status}</span></span><small>${ago(r.decided || r.created)}</small></div>`;
-  $("#page").innerHTML = `<div class="card"><h2>New requests <small class="muted">${open.length}</small></h2><p class="muted small">People ask from inside Cramly. You choose: give it free, or ask them to pay. They get your answer as a message in the app.</p>
+  const old = (r) => `<div class="logrow"><span><b>${esc(r.name)}</b> ${r.kind === "premium" ? `asked for ${PLAN_LABEL[r.plan]}` : esc(KIND_LABEL[r.kind])}: <span class="tag ${r.status === "declined" ? "bad" : "done"}">${{ free: "given free", paid: "paid", declined: "declined", answered: "answered", closed: "closed" }[r.status] || r.status}</span></span><small>${ago(r.decided || r.created)}</small></div>`;
+  $("#page").innerHTML = `<div class="card"><h2>New messages <small class="muted">${open.length}</small></h2><p class="muted small">People write to you from inside Cramly: premium requests, questions, problems and ideas. Answer them here and they get your reply in the app. For premium you choose: give it free, or ask them to pay.</p>
       ${open.map(card).join("") || '<p class="muted">Nobody is waiting. New requests show up here and on the tab badge.</p>'}</div>
     ${waiting.length ? `<div class="card"><h2>Waiting to pay <small class="muted">${waiting.length}</small></h2>${waiting.map(card).join("")}</div>` : ""}
     <div class="card"><h2>Earlier <small class="muted">${done.length}</small></h2>${done.map(old).join("") || '<p class="muted">Nothing yet.</p>'}</div>`;
