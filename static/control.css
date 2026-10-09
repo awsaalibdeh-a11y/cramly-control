@@ -59,3 +59,10 @@ label { display: grid; gap: 0.3rem; color: var(--muted); font-weight: 600; font-
 .plan-pick.plus { background: linear-gradient(135deg, #fff8e0, #ffeef4); border-color: #f3d6a0; }
 #t-presets button.on { background: var(--grape); color: #fff; }
 .logrow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-top: 1px solid var(--line); font-size: 0.92rem; } .logrow:first-of-type { border-top: 0; } .logrow small { color: var(--muted); white-space: nowrap; }
+.badge { display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; margin-left: 0.35rem; padding: 0 0.35rem; border-radius: 999px; background: var(--rose); color: #fff; font: 700 0.72rem var(--sans); font-style: normal; }
+.req { display: grid; gap: 0.7rem; padding: 1rem 1.1rem; border-radius: 1.3rem; background: var(--card); box-shadow: var(--shadow); }
+.req + .req { margin-top: 0.7rem; } .req.pay { border: 2px solid #ffe2a8; }
+.req-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; } .req-head .av { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--grape-l); color: var(--grape-d); font-weight: 700; }
+.req-head b { font-size: 1.05rem; } .req-head small { color: var(--muted); margin-left: auto; }
+.req-msg { margin: 0; padding: 0.7rem 0.9rem; border-radius: 1rem; background: var(--soft); white-space: pre-wrap; } .req-msg.none { color: var(--muted); font-style: italic; }
+.tag.pay { background: #fff1d6; color: #8a5200; } .tag.done { background: #d9f7ea; color: #12714c; }

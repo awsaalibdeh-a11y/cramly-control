@@ -83,8 +83,8 @@ async function render() {
   clearInterval(timer);
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   $("#page").innerHTML = `<p class="muted">Loading… (the first call can take up to a minute if Cramly is asleep)</p>`;
-  try { await ({ overview: overviewTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
-  health();
+  try { await ({ overview: overviewTab, requests: requestsTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
+  health(); badge();
 }
 $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) { tab = b.dataset.tab; render(); } });
 $("#logout").addEventListener("click", async () => { await fetch("/logout", { method: "POST" }); show(false); });
@@ -106,7 +106,7 @@ $("#login-form").addEventListener("submit", async (e) => {
 async function overviewTab() {
   const [o, st, lg] = await Promise.all([call("/api/admin/overview"), call("/api/admin/settings"), call("/api/admin/log")]);
   const stat = (n, l) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`;
-  $("#page").innerHTML = `<div class="stats">${stat(o.accounts, "Accounts")}${stat(o.premium - (o.plus || 0), "Premium")}${stat(o.plus || 0, "Premium Plus")}${stat(o.free, "Free")}${stat(o.locked, "Used their free minute")}${stat(o.new_today, "New today")}${stat(o.active_today, "Active today")}${stat(o.banned || 0, "Banned")}</div>
+  $("#page").innerHTML = `<div class="stats">${stat(o.accounts, "Accounts")}${stat(o.pending_requests || 0, "Waiting requests")}${stat(o.premium - (o.plus || 0), "Premium")}${stat(o.plus || 0, "Premium Plus")}${stat(o.free, "Free")}${stat(o.locked, "Used their free minute")}${stat(o.new_today, "New today")}${stat(o.active_today, "Active today")}${stat(o.banned || 0, "Banned")}</div>
     <div class="card kill ${st.maintenance ? "off" : ""}"><div class="kill-head"><div class="kill-ico">${st.maintenance ? "🔴" : "🟢"}</div>
         <div><h2>${st.maintenance ? "Cramly is switched OFF" : "Cramly is live"}</h2>
         <p class="muted">${st.maintenance ? "Everyone sees the message below and nothing works for them. You can still use this panel." : "Switch it off and every user instantly sees a pause screen. No new accounts, no AI, nothing."}</p></div></div>
@@ -250,4 +250,59 @@ async function linksTab() {
   $$("[data-copy]").forEach((b) => b.addEventListener("click", () => copy(giftText(o.invites.find((i) => i.id === +b.dataset.copy)), "Copied. Paste it in a chat.")));
   $$("[data-toggle]").forEach((b) => b.addEventListener("click", async () => { await call(`/api/admin/invites/${b.dataset.toggle}/revoke`, "POST", { revoked: b.dataset.r === "1" }); render(); }));
   $$("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (await ask({ title: "Delete this link?", text: "People who joined through it go back to the free minute.", ok: "Delete", danger: true })) { await call(`/api/admin/invites/${b.dataset.del}`, "DELETE"); render(); } }));
+}
+
+/* ============================================================ requests: people asking for a plan; you choose free or pay */
+const PLAN_LABEL = { premium: "Premium", plus: "Premium Plus" };
+let reqs = [];
+async function badge() {
+  try {
+    const d = await call("/api/admin/requests");
+    reqs = d.requests;
+    const b = $("#req-badge"); b.hidden = !d.pending; b.textContent = d.pending;
+    document.title = d.pending ? `(${d.pending}) Cramly Control` : "Cramly Control";
+  } catch { /* signed out */ }
+}
+setInterval(() => { if (!$("#shell").hidden && !document.hidden) badge(); }, 30000);
+
+function decideDialog(kind, r) {
+  const plan = r.plan;
+  const planPick = `<label>Plan<select id="d-plan"><option value="premium" ${plan === "premium" ? "selected" : ""}>Premium</option><option value="plus" ${plan === "plus" ? "selected" : ""}>Premium Plus</option></select></label>`;
+  const days = `<label>How many days? (0 = forever)<input id="d-days" type="number" min="0" max="3650" value="0"></label>`;
+  const forms = {
+    free: { title: `Give ${r.name} a free plan 🎁`, text: "It unlocks right away and they get a message that it is a gift.", body: `${planPick}${days}<label>A note for them (optional)<textarea id="d-note" maxlength="600" placeholder="e.g. Good luck on the exam!"></textarea></label>`, ok: "Give it free", cls: "good" },
+    pay: { title: `Ask ${r.name} to pay 💳`, text: "They get a message with the price and how to pay. It unlocks when you press Mark paid.", body: `${planPick}<label>Price<input id="d-price" maxlength="40" value="$2.99" placeholder="e.g. $2.99"></label><label>How should they pay?<textarea id="d-note" maxlength="600" placeholder="e.g. Send it to my PayPal, then reply here."></textarea></label>`, ok: "Send payment message", cls: "primary" },
+    paid: { title: `Mark ${r.name} as paid ✅`, text: "This unlocks their plan now and tells them thank you.", body: `${planPick}${days}`, ok: "Unlock their plan", cls: "good" },
+    declined: { title: `Decline ${r.name}?`, text: "They get a polite message. The free tools stay open for them.", body: `<label>Your message (optional)<textarea id="d-note" maxlength="600" placeholder="Thanks for asking. Not right now."></textarea></label>`, ok: "Decline", cls: "bad" },
+  }[kind];
+  return openDialog(`<h3>${forms.title}</h3><p class="muted">${forms.text}</p>${forms.body}<div class="row end"><button class="btn" id="d-no" type="button">Cancel</button><button class="btn ${forms.cls}" id="d-ok" type="button">${forms.ok}</button></div>`, (finish) => {
+    $("#d-ok").addEventListener("click", () => finish({ decision: kind, plan: $("#d-plan")?.value, days: +($("#d-days")?.value || 0), price: $("#d-price")?.value || "", note: $("#d-note")?.value || "" }));
+    $("#d-no").addEventListener("click", () => finish(null));
+  });
+}
+async function decide(kind, r) {
+  const t = await decideDialog(kind, r);
+  if (!t) return;
+  try {
+    await call(`/api/admin/requests/${r.id}/decide`, "POST", t);
+    toast({ free: `${r.name} got a free plan 🎁`, pay: `Asked ${r.name} to pay`, paid: `${r.name} is unlocked`, declined: `Declined ${r.name}` }[kind]);
+    requestsTab(); badge();
+  } catch (e) { toast(`Did not work: ${e.message}`, true); }
+}
+async function requestsTab() {
+  await badge();
+  const open = reqs.filter((r) => r.status === "pending"), waiting = reqs.filter((r) => r.status === "pay"), done = reqs.filter((r) => !["pending", "pay"].includes(r.status));
+  const when = (r) => ago(r.created);
+  const card = (r) => `<article class="req ${r.status}" data-id="${r.id}"><div class="req-head"><span class="av">${esc((r.name || "?")[0].toUpperCase())}</span><b>${esc(r.name)}</b>
+      <span class="tag ${r.plan === "plus" ? "plus" : ""}">${PLAN_LABEL[r.plan]}</span>${r.status === "pay" ? `<span class="tag pay">waiting to pay ${esc(r.price)}</span>` : ""}<small>${when(r)}</small></div>
+      <p class="req-msg ${r.message ? "" : "none"}">${esc(r.message || "No message, they just asked.")}</p>
+      ${r.exists ? `<div class="acts">${r.status === "pending"
+        ? `<button class="btn good" data-k="free">🎁 Give free</button><button class="btn" data-k="pay">💳 Ask to pay</button><button class="btn danger" data-k="declined">Decline</button>`
+        : `<button class="btn good" data-k="paid">✅ Mark paid and unlock</button><button class="btn" data-k="free">🎁 Give free instead</button><button class="btn danger" data-k="declined">Cancel</button>`}</div>` : '<p class="muted small">That account was deleted.</p>'}</article>`;
+  const old = (r) => `<div class="logrow"><span><b>${esc(r.name)}</b> asked for ${PLAN_LABEL[r.plan]}: <span class="tag ${r.status === "declined" ? "bad" : "done"}">${{ free: "given free", paid: "paid", declined: "declined" }[r.status] || r.status}</span></span><small>${ago(r.decided || r.created)}</small></div>`;
+  $("#page").innerHTML = `<div class="card"><h2>New requests <small class="muted">${open.length}</small></h2><p class="muted small">People ask from inside Cramly. You choose: give it free, or ask them to pay. They get your answer as a message in the app.</p>
+      ${open.map(card).join("") || '<p class="muted">Nobody is waiting. New requests show up here and on the tab badge.</p>'}</div>
+    ${waiting.length ? `<div class="card"><h2>Waiting to pay <small class="muted">${waiting.length}</small></h2>${waiting.map(card).join("")}</div>` : ""}
+    <div class="card"><h2>Earlier <small class="muted">${done.length}</small></h2>${done.map(old).join("") || '<p class="muted">Nothing yet.</p>'}</div>`;
+  $("#page").onclick = (e) => { const b = e.target.closest("button[data-k]"); if (!b) return; const r = reqs.find((x) => x.id === +b.closest(".req").dataset.id); if (r) decide(b.dataset.k, r); };
 }

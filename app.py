@@ -27,7 +27,7 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict"
 
 # only these Cramly owner routes can be reached through this site
 ALLOWED = [
-    ("GET", r"/api/admin/overview"), ("GET", r"/api/admin/log"), ("GET", r"/api/admin/users"), ("GET", r"/api/admin/settings"), ("POST", r"/api/admin/settings"),
+    ("GET", r"/api/admin/overview"), ("GET", r"/api/admin/log"), ("GET", r"/api/admin/requests"), ("POST", r"/api/admin/requests/\d+/decide"), ("GET", r"/api/admin/users"), ("GET", r"/api/admin/settings"), ("POST", r"/api/admin/settings"),
     ("POST", r"/api/admin/broadcast"), ("POST", r"/api/admin/invites"), ("POST", r"/api/admin/invites/\d+/revoke"), ("DELETE", r"/api/admin/invites/\d+"),
     ("POST", r"/api/admin/users/\d+/(ban|timeout|message|premium|reset-trial)"), ("DELETE", r"/api/admin/users/\d+"),
 ]
