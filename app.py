@@ -11,6 +11,7 @@ import hmac
 import os
 import re
 import secrets
+import threading
 import time
 
 import requests
@@ -30,7 +31,15 @@ ALLOWED = [
     ("GET", r"/api/admin/overview"), ("GET", r"/api/admin/log"), ("GET", r"/api/admin/requests"), ("POST", r"/api/admin/requests/\d+/decide"), ("GET", r"/api/admin/users"), ("GET", r"/api/admin/settings"), ("POST", r"/api/admin/settings"),
     ("POST", r"/api/admin/broadcast"), ("POST", r"/api/admin/invites"), ("POST", r"/api/admin/invites/\d+/revoke"), ("DELETE", r"/api/admin/invites/\d+"),
     ("POST", r"/api/admin/users/\d+/(ban|timeout|message|premium|reset-trial)"), ("DELETE", r"/api/admin/users/\d+"),
+    ("GET", r"/api/admin/uni"), ("POST", r"/api/admin/uni/(app|note|device)"), ("DELETE", r"/api/admin/uni/note/\d+"),     # every app, through Cramly
 ]
+APP_URLS = {                                                       # what "is it up?" checks, one per app
+    "cramly": "https://cramly-twz5.onrender.com/healthz", "homebase": "https://homebase-family.onrender.com/health", "alibi": "https://alibi-d9tn.onrender.com/",
+    "scout": "https://scout-15t6.onrender.com/", "unwritten": "https://unwritten-dulm.onrender.com/", "cookify": "https://cookify-6auu.onrender.com/",
+    "crosswind": "https://crosswind-w8g9.onrender.com/", "platter": "https://platter-87b0.onrender.com/", "tripmate": "https://tripmate-yecg.onrender.com/",
+    "showcase": "https://showcase-hub-pu62.onrender.com/",
+}
+_probe = {"at": 0, "data": {}}
 _tries = {}
 
 
@@ -111,6 +120,28 @@ def proxy(rest):
         return (r.content, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
     except requests.RequestException:
         return jsonify(error="Cramly did not answer. It may be waking up (free servers sleep). Try again in a minute."), 502
+
+
+@app.get("/apps")
+def apps_health():
+    """Up or not, and how fast, for every app at once. Cached for 25 seconds; a sleeping free server can take a minute to wake."""
+    if not session.get("ok"):
+        return jsonify(error="Sign in first."), 401
+    if time.time() - _probe["at"] > 25:
+        out = {}
+
+        def one(k, u):
+            t0 = time.time()
+            try:
+                r = requests.get(u, timeout=45, headers={"User-Agent": "control-probe"})
+                out[k] = {"up": r.status_code < 500 or r.status_code == 503, "code": r.status_code, "ms": int((time.time() - t0) * 1000)}
+            except requests.RequestException:
+                out[k] = {"up": False, "code": 0, "ms": int((time.time() - t0) * 1000)}
+        ts = [threading.Thread(target=one, args=kv) for kv in APP_URLS.items()]
+        [t.start() for t in ts]
+        [t.join(50) for t in ts]
+        _probe.update(at=time.time(), data=out)
+    return jsonify(apps=_probe["data"], urls=APP_URLS)
 
 
 @app.get("/health")

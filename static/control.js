@@ -72,7 +72,7 @@ function timeoutDialog(who) {
 function show(on) { $("#login").hidden = on; $("#shell").hidden = !on; }
 
 /* ---------- sign in, tabs, health ---------- */
-let tab = "overview", timer = 0;
+let tab = "apps", timer = 0;
 async function health() {
   try {
     const h = await call("/health");
@@ -83,7 +83,7 @@ async function render() {
   clearInterval(timer);
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   $("#page").innerHTML = `<p class="muted">Loading… (the first call can take up to a minute if Cramly is asleep)</p>`;
-  try { await ({ overview: overviewTab, requests: requestsTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
+  try { await ({ apps: appsTab, overview: overviewTab, requests: requestsTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
   health(); badge();
 }
 $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) { tab = b.dataset.tab; render(); } });
@@ -310,4 +310,61 @@ async function requestsTab() {
     ${waiting.length ? `<div class="card"><h2>Waiting to pay <small class="muted">${waiting.length}</small></h2>${waiting.map(card).join("")}</div>` : ""}
     <div class="card"><h2>Earlier <small class="muted">${done.length}</small></h2>${done.map(old).join("") || '<p class="muted">Nothing yet.</p>'}</div>`;
   $("#page").onclick = (e) => { const b = e.target.closest("button[data-k]"); if (!b) return; const r = reqs.find((x) => x.id === +b.closest(".req").dataset.id); if (r) decide(b.dataset.k, r); };
+}
+
+
+/* ============================================================ all apps: switch off, message, troll, block, status */
+const NAMES = { cramly: "Cramly", homebase: "Homebase", alibi: "Alibi", scout: "Scout", unwritten: "Unwritten", cookify: "Cookify", crosswind: "Crosswind", platter: "Platter", tripmate: "Tripmate", showcase: "Showcase" };
+const EFFECT_LABEL = { confetti: "🎉 Confetti", flip: "🙃 Flip upside down", shake: "🫨 Shake", rainbow: "🌈 Rainbow colours", disco: "🪩 Disco flash", spin: "🌀 Spin once", emoji: "🤪 Emoji rain", fakecrash: "💥 Fake crash", blur: "😵 Blur", typewriter: "⌨️ Somebody is typing" };
+async function appsTab() {
+  const [u, h] = await Promise.all([call("/api/admin/uni"), call("/apps").catch(() => ({ apps: {}, urls: {} }))]);
+  const live = (id) => { const a = h.apps[id]; return !a ? '<span class="dot grey"></span>unknown' : a.up ? `<span class="dot green"></span>${a.ms} ms` : '<span class="dot red"></span>not answering'; };
+  const opts = (all) => `${all ? '<option value="*">Every app</option>' : ""}${u.apps.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}`;
+  const row = (a) => `<div class="approw ${a.off ? "isoff" : ""}"><div class="appname"><b>${esc(a.name)}</b><small>${live(a.id)}${a.off ? ' · <span class="tag bad">switched off</span>' : ""}</small></div>
+      <div class="row end"><button class="btn small" data-act="msg" data-app="${a.id}">Message</button><button class="btn small" data-act="troll" data-app="${a.id}">Troll</button>
+      <button class="btn small ${a.off ? "good" : "bad"}" data-act="toggle" data-app="${a.id}" data-off="${a.off ? 0 : 1}">${a.off ? "Switch on" : "Switch off"}</button></div></div>`;
+  $("#page").innerHTML = `<div class="card kill ${u.all.off ? "off" : ""}"><div class="kill-head"><div class="kill-ico">${u.all.off ? "🔴" : "🟢"}</div>
+      <div><h2>${u.all.off ? "EVERYTHING is switched off" : "All apps are running"}</h2><p class="muted">One switch for every app. Each app stops within about 20 seconds and shows your message. This panel keeps working.</p></div></div>
+      <label>Message people see<input id="a-msg" maxlength="300" value="${esc(u.all.msg || "")}" placeholder="e.g. Maintenance. Back at 6 pm."></label>
+      <div class="row"><button class="btn ${u.all.off ? "good" : "bad"} big" id="a-all" type="button">${u.all.off ? "Switch everything back ON" : "Switch EVERYTHING off"}</button></div></div>
+    <div class="card"><h2>Your apps <small class="muted">${u.apps.length}</small></h2>${u.apps.map(row).join("")}
+      <p class="muted small">Status checks free servers, which sleep when nobody visits, so the first check of a sleeping app can say "not answering" for up to a minute.</p></div>
+    <div class="card"><h2>Send a message or a troll 📣</h2>
+      <div class="grid2"><label>Where<select id="n-app">${opts(true)}</select></label><label>How long it stays available<select id="n-min"><option value="10">10 minutes</option><option value="60" selected>1 hour</option><option value="1440">1 day</option></select></label></div>
+      <label>Message (optional for trolls)<textarea id="n-body" maxlength="400" placeholder="Shows as a popup to everyone using that app, once each."></textarea></label>
+      <div class="row"><button class="btn primary" id="n-send" type="button">Send message</button></div>
+      <h3 style="margin:1rem 0 .5rem">Trolls <small class="muted">harmless, end by themselves</small></h3>
+      <div class="chips" id="n-effects">${u.effects.map((e) => `<button type="button" data-e="${e}">${EFFECT_LABEL[e] || e}</button>`).join("")}</div></div>
+    <div class="card"><h2>Live messages and trolls <small class="muted">${u.notes.length}</small></h2>${u.notes.map((n) => `<div class="logrow"><span>${n.kind === "troll" ? "🎭 " + esc(EFFECT_LABEL[n.effect] || n.effect) : "💬"} ${esc(n.body || "")} <small class="muted">→ ${n.app === "*" ? "everyone" : esc(NAMES[n.app] || n.app)} · until ${new Date(n.expires * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small" data-act="del" data-id="${n.id}">Remove</button></div>`).join("") || '<p class="muted">Nothing active.</p>'}</div>
+    <div class="card"><h2>One account everywhere 🔑</h2><p class="muted">People link their Cramly account in any app with a 6-digit code (Cramly, Me, Link a device). Then <b>every ban, time-out and message you make in the Accounts tab applies in every app</b> for that account, instantly.</p>
+      <p class="muted">People who never linked an account are blocked by device. Their device id is shown in the ☁ panel of any app.</p>
+      <div class="grid2"><label>Device id<input id="d-id" placeholder="paste a device id"></label><label>Minutes (empty for a permanent block)<input id="d-min" type="number" min="1" placeholder="e.g. 60"></label></div>
+      <div class="row"><button class="btn bad" id="d-block" type="button">Block device</button><button class="btn" id="d-clear" type="button">Unblock</button></div>
+      ${u.devs.length ? `<h3 style="margin:1rem 0 .5rem">Blocked devices</h3>${u.devs.map((d) => `<div class="logrow"><code>${esc(d.dev)}</code><small>${d.banned ? "blocked" : "until " + new Date(d.until * 1000).toLocaleString()}${d.reason ? " · " + esc(d.reason) : ""}</small></div>`).join("")}` : ""}</div>`;
+  const send = async (path, body, okMsg) => { try { await call(path, "POST", body); toast(okMsg); render(); } catch (e) { toast(e.message, true); } };
+  $("#a-all").addEventListener("click", async () => {
+    const off = !u.all.off;
+    if (!(await ask({ title: off ? "Switch EVERYTHING off?" : "Switch everything back on?", text: off ? "Every app stops for everyone and shows your message." : "Every app works again.", ok: off ? "Yes, all off" : "All on", danger: off }))) return;
+    send("/api/admin/uni/app", { app: "*", off, msg: $("#a-msg").value }, off ? "Everything is OFF" : "Everything is ON");
+  });
+  $("#page").onclick = async (e) => {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const app = b.dataset.app, name = NAMES[app] || app;
+    if (b.dataset.act === "toggle") {
+      const off = b.dataset.off === "1", msg = off ? await ask({ title: `Switch ${name} off`, text: "What should people see?", ok: "Switch off", danger: true, field: { label: "Message", hint: "Back soon." } }) : "";
+      if (msg === null) return; send("/api/admin/uni/app", { app, off, msg: off ? msg : "" }, `${name} is ${off ? "OFF" : "ON"}`);
+    } else if (b.dataset.act === "msg") { $("#n-app").value = app; $("#n-body").focus(); $("#n-body").scrollIntoView({ behavior: "smooth", block: "center" }); }
+    else if (b.dataset.act === "troll") { $("#n-app").value = app; $("#n-effects").scrollIntoView({ behavior: "smooth", block: "center" }); toast(`Pick a troll for ${name}`); }
+    else if (b.dataset.act === "del") { await call(`/api/admin/uni/note/${b.dataset.id}`, "DELETE").catch((x) => toast(x.message, true)); render(); }
+  };
+  $("#n-send").addEventListener("click", () => {
+    const body = $("#n-body").value.trim(); if (!body) return toast("Write a message first.", true);
+    send("/api/admin/uni/note", { app: $("#n-app").value, kind: "message", body, minutes: +$("#n-min").value }, "Message sent");
+  });
+  $("#n-effects").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-e]"); if (!b) return;
+    send("/api/admin/uni/note", { app: $("#n-app").value, kind: "troll", effect: b.dataset.e, body: $("#n-body").value.trim(), minutes: +$("#n-min").value }, `Troll sent: ${EFFECT_LABEL[b.dataset.e]}`);
+  });
+  $("#d-block").addEventListener("click", () => { const dev = $("#d-id").value.trim(); if (!dev) return toast("Paste a device id.", true); send("/api/admin/uni/device", { dev, minutes: +$("#d-min").value || 0, reason: "" }, "Device blocked"); });
+  $("#d-clear").addEventListener("click", () => { const dev = $("#d-id").value.trim(); if (!dev) return toast("Paste a device id.", true); send("/api/admin/uni/device", { dev, clear: true }, "Device unblocked"); });
 }
