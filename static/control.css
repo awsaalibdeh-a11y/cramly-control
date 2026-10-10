@@ -111,3 +111,5 @@ input, textarea, select { background: #000; border-color: #0f3a1d; color: #c9ffd
 ::selection { background: #00ff7f; color: #000; }
 
 .chips.grapps { max-height: 170px; overflow-y: auto; } .chips button.on { background: #00ff7f; color: #001a0a; box-shadow: 0 0 12px -3px rgba(0,255,127,.7); }
+
+.tag.blk { cursor: pointer; } .tag.blk:hover { background: #ff4d6d; color:#1a0006; box-shadow:0 0 10px -2px rgba(255,77,109,.7); }

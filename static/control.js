@@ -393,7 +393,7 @@ async function homebaseTab() {
         <span class="row"><button class="btn small" data-act="inv" data-role="child">Child invite code</button><button class="btn small" data-act="inv" data-role="parent">Parent invite code</button><button class="btn small primary" data-act="ann">📢 Announce</button></span></h3>
       ${fam.members.map((m) => `<div class="mrow"><span>${esc(m.emoji)}</span><b class="grow">${esc(m.name)} <small class="muted">${m.role}</small></b>
         <small class="muted">seen ${when(m.last_seen)}${m.devices ? " · " + m.devices + " linked device" + (m.devices > 1 ? "s" : "") : ""}</small>
-        ${(m.device_list || []).map((d) => `<span class="tag" title="${esc(d.name)}">${d.kind === "windows" ? "💻" : "📱"} ${esc(d.name)} · ${d.last_seen ? ago(d.last_seen) : "never"} <a href="#" data-rmdev="${d.id}" aria-label="Remove device">✕</a></span>`).join("")}${m.lock ? '<span class="tag amber">locked</span>' : ""}${(m.blocks || []).map((b) => `<span class="tag bad">${esc(b.label)}</span>`).join("")}
+        ${(m.device_list || []).map((d) => `<span class="tag" title="${esc(d.name)}">${d.kind === "windows" ? "💻" : "📱"} ${esc(d.name)} · ${d.last_seen ? ago(d.last_seen) : "never"} <a href="#" data-rmdev="${d.id}" aria-label="Remove device">✕</a></span>`).join("")}${m.lock ? '<span class="tag amber">locked</span>' : ""}${(m.blocks || []).map((b) => `<span class="tag bad blk" data-liftblk="${b.id}" title="Click to cancel grounding">${esc(b.label)} ✕</span>`).join("")}
         ${m.role === "child" ? `<button class="btn small" data-act="ground" data-id="${m.id}" data-name="${esc(m.name)}">🚫 Ground apps</button>` : ""}</div>`).join("")}</div>`).join("") || '<div class="card"><p class="muted">No families yet.</p></div>'}
     <div class="card"><h2>Live activity <small class="muted">${act.items.length}</small></h2>${act.items.slice(0, 25).map((i) => `<div class="logrow"><span><small class="muted">${esc(i.family)}</small> ${i.kind === "sos" ? "🆘 " : ""}${esc(i.text)}</span><small class="muted">${ago(i.at)}</small></div>`).join("") || '<p class="muted">Nothing yet.</p>'}</div>
     <div class="card"><h2>Grounded apps now <small class="muted">${bl.blocks.length}</small></h2>${bl.blocks.map((b) => `<div class="logrow"><span><b>${esc(b.label)}</b> for ${esc(b.child)} <small class="muted">until ${new Date(b.until * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small bad" data-lift="${b.id}">Lift now</button></div>`).join("") || '<p class="muted">Nothing is grounded.</p>'}</div>`;
@@ -404,6 +404,8 @@ async function homebaseTab() {
   };
   $("#hb-all").onclick = () => announce("*", "every family");
   $("#page").onclick = async (e) => {
+    const lb = e.target.closest("[data-liftblk]");
+    if (lb) { e.preventDefault(); try { await call(`/hb/api/admin/blocks/${lb.dataset.liftblk}`, "DELETE"); toast("Grounding cancelled"); render(); } catch (x) { toast(x.message, true); } return; }
     const rm = e.target.closest("[data-rmdev]");
     if (rm) { e.preventDefault(); if (!(await ask({ title: "Remove this device?", text: "Its tracker stops working at once.", ok: "Remove", danger: true }))) return; try { await call(`/hb/api/admin/devices/${rm.dataset.rmdev}`, "DELETE"); toast("Removed"); render(); } catch (x) { toast(x.message, true); } return; }
     const lift = e.target.closest("[data-lift]");
