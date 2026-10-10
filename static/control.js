@@ -336,6 +336,7 @@ async function appsTab() {
       <div class="row"><button class="btn primary" id="n-send" type="button">Send message</button></div>
       <h3 style="margin:1rem 0 .5rem">Trolls <small class="muted">harmless, end by themselves</small></h3>
       <div class="chips" id="n-effects">${u.effects.map((e) => `<button type="button" data-e="${e}">${EFFECT_LABEL[e] || e}</button>`).join("")}</div></div>
+    <div class="card" id="hb-locks"><h2>Homebase locks 🔒</h2><p class="muted">Parents can lock a child's devices (never more than 4 hours a day). You can lift any lock here, whenever you want.</p><div id="hb-lock-list" class="muted">Loading…</div></div>
     <div class="card"><h2>Live messages and trolls <small class="muted">${u.notes.length}</small></h2>${u.notes.map((n) => `<div class="logrow"><span>${n.kind === "troll" ? "🎭 " + esc(EFFECT_LABEL[n.effect] || n.effect) : "💬"} ${esc(n.body || "")} <small class="muted">→ ${n.app === "*" ? "everyone" : esc(NAMES[n.app] || n.app)} · until ${new Date(n.expires * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small" data-act="del" data-id="${n.id}">Remove</button></div>`).join("") || '<p class="muted">Nothing active.</p>'}</div>
     <div class="card"><h2>One account everywhere 🔑</h2><p class="muted">People link their Cramly account in any app with a 6-digit code (Cramly, Settings, Use Cramly on another device). Then <b>every ban, time-out and message you make in the Accounts tab applies in every app</b> for that account, instantly.</p>
       <p class="muted">People who never linked an account are blocked by device. Their device id is shown in the ☁ panel of any app.</p>
@@ -343,6 +344,15 @@ async function appsTab() {
       <div class="row"><button class="btn bad" id="d-block" type="button">Block device</button><button class="btn" id="d-clear" type="button">Unblock</button></div>
       ${u.devs.length ? `<h3 style="margin:1rem 0 .5rem">Blocked devices</h3>${u.devs.map((d) => `<div class="logrow"><code>${esc(d.dev)}</code><small>${d.banned ? "blocked" : "until " + new Date(d.until * 1000).toLocaleString()}${d.reason ? " · " + esc(d.reason) : ""}</small></div>`).join("")}` : ""}</div>`;
   call("/apps").then((h) => $$(".live").forEach((el) => { el.innerHTML = liveHtml(h.apps[el.dataset.app]); })).catch(() => $$(".live").forEach((el) => { el.innerHTML = '<span class="dot grey"></span>unknown'; }));   // the slow part, filled in when it arrives
+  const drawLocks = async () => {
+    const box = $("#hb-lock-list"); if (!box) return;
+    try {
+      const d = await call("/hb/api/admin/locks");
+      box.innerHTML = d.locks.map((l) => `<div class="logrow"><span><b>${esc(l.child)}</b> locked by ${esc(l.by)} <small class="muted">(${esc(l.family)}) · until ${new Date(l.until * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small bad" data-lift="${l.id}">Lift now</button></div>`).join("") || "No device is locked right now.";
+      box.onclick = async (e) => { const b = e.target.closest("[data-lift]"); if (!b) return; try { await call(`/hb/api/admin/locks/${b.dataset.lift}/lift`, "POST"); toast("Lock lifted"); drawLocks(); } catch (x) { toast(x.message, true); } };
+    } catch (e) { box.textContent = e.message; }
+  };
+  drawLocks();
   const send = async (path, body, okMsg) => { try { await call(path, "POST", body); toast(okMsg); render(); } catch (e) { toast(e.message, true); } };
   $("#a-all").addEventListener("click", async () => {
     const off = !u.all.off;
