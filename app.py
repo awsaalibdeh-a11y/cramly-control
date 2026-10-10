@@ -127,7 +127,7 @@ HOMEBASE_URL = "https://homebase-family.onrender.com"
 
 @app.route("/hb/<path:rest>", methods=["GET", "POST"])
 def homebase_proxy(rest):
-    """The owner's override for Homebase: see every parent lock and lift any of them. Needs HB_ADMIN_KEY (also set on Homebase)."""
+    """The owner's override for Homebase: see every parent lock and lift any of them. Homebase asks Cramly whether the owner key is right, so there is nothing new to set up."""
     if not session.get("ok"):
         return jsonify(error="Sign in first."), 401
     if request.method != "GET" and request.headers.get("X-Requested-With") != "cramly-control":
@@ -135,9 +135,9 @@ def homebase_proxy(rest):
     path = f"/{rest}"
     if not any(request.method == m and re.fullmatch(p, path) for m, p in [("GET", r"/api/admin/locks"), ("POST", r"/api/admin/locks/\d+/lift")]):
         return jsonify(error="Not allowed."), 404
-    key = os.environ.get("HB_ADMIN_KEY", "")
+    key = os.environ.get("HB_ADMIN_KEY") or os.environ.get("ADMIN_KEY", "")                     # the same owner key Cramly already trusts
     if len(key) < 12:
-        return jsonify(error="Homebase is not connected yet. Add HB_ADMIN_KEY on this server and on Homebase."), 503
+        return jsonify(error="Not set up yet: ADMIN_KEY is missing."), 503
     try:
         r = requests.request(request.method, (os.environ.get("HOMEBASE_URL") or HOMEBASE_URL).rstrip("/") + path, headers={"X-Admin-Key": key}, timeout=60)
         return (r.content, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
