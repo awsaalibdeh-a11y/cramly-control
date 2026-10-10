@@ -133,7 +133,7 @@ def homebase_proxy(rest):
     if request.method != "GET" and request.headers.get("X-Requested-With") != "cramly-control":
         return jsonify(error="Blocked."), 403
     path = f"/{rest}"
-    if not any(request.method == m and re.fullmatch(p, path) for m, p in [("GET", r"/api/admin/(locks|families|blocks)"), ("POST", r"/api/admin/locks/\d+/lift"), ("POST", r"/api/admin/(invite|announce|blocks)"), ("DELETE", r"/api/admin/blocks/\d+")]):
+    if not any(request.method == m and re.fullmatch(p, path) for m, p in [("GET", r"/api/admin/(locks|families|blocks|activity)"), ("DELETE", r"/api/admin/devices/\d+"), ("POST", r"/api/admin/locks/\d+/lift"), ("POST", r"/api/admin/(invite|announce|blocks)"), ("DELETE", r"/api/admin/blocks/\d+")]):
         return jsonify(error="Not allowed."), 404
     key = os.environ.get("HB_ADMIN_KEY") or os.environ.get("ADMIN_KEY", "")                     # the same owner key Cramly already trusts
     if len(key) < 12:
