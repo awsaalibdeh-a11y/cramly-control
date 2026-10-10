@@ -317,8 +317,9 @@ async function requestsTab() {
 const NAMES = { cramly: "Cramly", homebase: "Homebase", alibi: "Alibi", scout: "Scout", unwritten: "Unwritten", cookify: "Cookify", crosswind: "Crosswind", platter: "Platter", tripmate: "Tripmate", showcase: "Showcase" };
 const EFFECT_LABEL = { confetti: "🎉 Confetti", flip: "🙃 Flip upside down", shake: "🫨 Shake", rainbow: "🌈 Rainbow colours", disco: "🪩 Disco flash", spin: "🌀 Spin once", emoji: "🤪 Emoji rain", fakecrash: "💥 Fake crash", blur: "😵 Blur", typewriter: "⌨️ Somebody is typing" };
 async function appsTab() {
-  const [u, h] = await Promise.all([call("/api/admin/uni"), call("/apps").catch(() => ({ apps: {}, urls: {} }))]);
-  const live = (id) => { const a = h.apps[id]; return !a ? '<span class="dot grey"></span>unknown' : a.up ? `<span class="dot green"></span>${a.ms} ms` : '<span class="dot red"></span>not answering'; };
+  const u = await call("/api/admin/uni");
+  const liveHtml = (a) => !a ? '<span class="dot grey"></span>checking…' : a.up ? `<span class="dot green"></span>${a.ms} ms` : '<span class="dot red"></span>not answering';
+  const live = (id) => `<span class="live" data-app="${id}">${liveHtml(null)}</span>`;
   const opts = (all) => `${all ? '<option value="*">Every app</option>' : ""}${u.apps.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}`;
   const row = (a) => `<div class="approw ${a.off ? "isoff" : ""}"><div class="appname"><b>${esc(a.name)}</b><small>${live(a.id)}${a.off ? ' · <span class="tag bad">switched off</span>' : ""}</small></div>
       <div class="row end"><button class="btn small" data-act="msg" data-app="${a.id}">Message</button><button class="btn small" data-act="troll" data-app="${a.id}">Troll</button>
@@ -336,11 +337,12 @@ async function appsTab() {
       <h3 style="margin:1rem 0 .5rem">Trolls <small class="muted">harmless, end by themselves</small></h3>
       <div class="chips" id="n-effects">${u.effects.map((e) => `<button type="button" data-e="${e}">${EFFECT_LABEL[e] || e}</button>`).join("")}</div></div>
     <div class="card"><h2>Live messages and trolls <small class="muted">${u.notes.length}</small></h2>${u.notes.map((n) => `<div class="logrow"><span>${n.kind === "troll" ? "🎭 " + esc(EFFECT_LABEL[n.effect] || n.effect) : "💬"} ${esc(n.body || "")} <small class="muted">→ ${n.app === "*" ? "everyone" : esc(NAMES[n.app] || n.app)} · until ${new Date(n.expires * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small" data-act="del" data-id="${n.id}">Remove</button></div>`).join("") || '<p class="muted">Nothing active.</p>'}</div>
-    <div class="card"><h2>One account everywhere 🔑</h2><p class="muted">People link their Cramly account in any app with a 6-digit code (Cramly, Me, Link a device). Then <b>every ban, time-out and message you make in the Accounts tab applies in every app</b> for that account, instantly.</p>
+    <div class="card"><h2>One account everywhere 🔑</h2><p class="muted">People link their Cramly account in any app with a 6-digit code (Cramly, Settings, Use Cramly on another device). Then <b>every ban, time-out and message you make in the Accounts tab applies in every app</b> for that account, instantly.</p>
       <p class="muted">People who never linked an account are blocked by device. Their device id is shown in the ☁ panel of any app.</p>
       <div class="grid2"><label>Device id<input id="d-id" placeholder="paste a device id"></label><label>Minutes (empty for a permanent block)<input id="d-min" type="number" min="1" placeholder="e.g. 60"></label></div>
       <div class="row"><button class="btn bad" id="d-block" type="button">Block device</button><button class="btn" id="d-clear" type="button">Unblock</button></div>
       ${u.devs.length ? `<h3 style="margin:1rem 0 .5rem">Blocked devices</h3>${u.devs.map((d) => `<div class="logrow"><code>${esc(d.dev)}</code><small>${d.banned ? "blocked" : "until " + new Date(d.until * 1000).toLocaleString()}${d.reason ? " · " + esc(d.reason) : ""}</small></div>`).join("")}` : ""}</div>`;
+  call("/apps").then((h) => $$(".live").forEach((el) => { el.innerHTML = liveHtml(h.apps[el.dataset.app]); })).catch(() => $$(".live").forEach((el) => { el.innerHTML = '<span class="dot grey"></span>unknown'; }));   // the slow part, filled in when it arrives
   const send = async (path, body, okMsg) => { try { await call(path, "POST", body); toast(okMsg); render(); } catch (e) { toast(e.message, true); } };
   $("#a-all").addEventListener("click", async () => {
     const off = !u.all.off;
