@@ -1,4 +1,4 @@
-"""Cramly Control: the owner's private admin site. It is a separate website with its own password; it never touches Cramly's
+"""Hacker Panel (was Cramly Control): the owner's private admin site. It is a separate website with its own password; it never touches Cramly's
 database. Every action goes to Cramly's owner API over HTTPS, signed with the shared ADMIN_KEY that lives only on the servers.
 
   CONTROL_PASSWORD   what you type to open this site (6+ characters; longer is safer)
@@ -125,7 +125,7 @@ def proxy(rest):
 HOMEBASE_URL = "https://homebase-family.onrender.com"
 
 
-@app.route("/hb/<path:rest>", methods=["GET", "POST"])
+@app.route("/hb/<path:rest>", methods=["GET", "POST", "DELETE"])
 def homebase_proxy(rest):
     """The owner's override for Homebase: see every parent lock and lift any of them. Homebase asks Cramly whether the owner key is right, so there is nothing new to set up."""
     if not session.get("ok"):
@@ -133,13 +133,13 @@ def homebase_proxy(rest):
     if request.method != "GET" and request.headers.get("X-Requested-With") != "cramly-control":
         return jsonify(error="Blocked."), 403
     path = f"/{rest}"
-    if not any(request.method == m and re.fullmatch(p, path) for m, p in [("GET", r"/api/admin/locks"), ("POST", r"/api/admin/locks/\d+/lift")]):
+    if not any(request.method == m and re.fullmatch(p, path) for m, p in [("GET", r"/api/admin/(locks|families|blocks)"), ("POST", r"/api/admin/locks/\d+/lift"), ("POST", r"/api/admin/(invite|announce|blocks)"), ("DELETE", r"/api/admin/blocks/\d+")]):
         return jsonify(error="Not allowed."), 404
     key = os.environ.get("HB_ADMIN_KEY") or os.environ.get("ADMIN_KEY", "")                     # the same owner key Cramly already trusts
     if len(key) < 12:
         return jsonify(error="Not set up yet: ADMIN_KEY is missing."), 503
     try:
-        r = requests.request(request.method, (os.environ.get("HOMEBASE_URL") or HOMEBASE_URL).rstrip("/") + path, headers={"X-Admin-Key": key}, timeout=60)
+        r = requests.request(request.method, (os.environ.get("HOMEBASE_URL") or HOMEBASE_URL).rstrip("/") + path, headers={"X-Admin-Key": key}, json=request.get_json(silent=True) if request.method == "POST" else None, params=request.args if request.method == "GET" else None, timeout=60)
         return (r.content, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
     except requests.RequestException:
         return jsonify(error="Homebase did not answer. It may be waking up. Try again in a minute."), 502

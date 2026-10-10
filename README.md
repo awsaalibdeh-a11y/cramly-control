@@ -1,4 +1,4 @@
-# Cramly Control
+# Hacker Panel (was Cramly Control)
 
 Private owner panel for Cramly. A separate website with its own password: it sees accounts, bans, times out, messages people, makes personal premium links, and has a kill switch for the whole app. It never touches Cramly's database; every action goes to Cramly's owner API, signed with the shared `ADMIN_KEY`.
 

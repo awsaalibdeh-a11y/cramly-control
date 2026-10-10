@@ -81,3 +81,11 @@ input, textarea, select { background: #0a0a0b; color: var(--ink); }
 .approw:last-of-type { border-bottom: 0; } .appname b { display: block; } .appname small { color: var(--muted); display: flex; align-items: center; gap: .4rem; }
 .approw.isoff .appname b { color: var(--rose); } .row.end { justify-content: flex-end; }
 code { background: #1b1b1f; padding: .1rem .35rem; border-radius: .4rem; }
+
+/* hacker panel */
+.brand b { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing: .02em; }
+.logo { font-family: ui-monospace, Consolas, monospace; font-weight: 700; color: #3dd49b; }
+.fam { border-top: 1px solid var(--line); padding: .9rem 0; } .fam:first-of-type { border-top: 0; }
+.fam h3 { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; font-size: 1.05rem; }
+.mrow { display: flex; align-items: center; gap: .6rem; padding: .35rem 0; flex-wrap: wrap; } .mrow .grow { flex: 1; min-width: 8rem; }
+.code { font: 700 1.5rem ui-monospace, Consolas, monospace; letter-spacing: .25em; text-align: center; padding: .8rem; background: #0a0a0b; border: 1px solid var(--line); border-radius: .9rem; color: #3dd49b; }

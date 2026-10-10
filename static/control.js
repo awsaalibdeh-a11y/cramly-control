@@ -83,7 +83,7 @@ async function render() {
   clearInterval(timer);
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   $("#page").innerHTML = `<p class="muted">Loading… (the first call can take up to a minute if Cramly is asleep)</p>`;
-  try { await ({ apps: appsTab, overview: overviewTab, requests: requestsTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
+  try { await ({ apps: appsTab, homebase: homebaseTab, overview: overviewTab, requests: requestsTab, accounts: accountsTab, links: linksTab })[tab](); } catch (e) { if (e.message !== "Signed out.") $("#page").innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" onclick="render()">Try again</button></div>`; }
   health(); badge();
 }
 $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) { tab = b.dataset.tab; render(); } });
@@ -379,4 +379,47 @@ async function appsTab() {
   });
   $("#d-block").addEventListener("click", () => { const dev = $("#d-id").value.trim(); if (!dev) return toast("Paste a device id.", true); send("/api/admin/uni/device", { dev, minutes: +$("#d-min").value || 0, reason: "" }, "Device blocked"); });
   $("#d-clear").addEventListener("click", () => { const dev = $("#d-id").value.trim(); if (!dev) return toast("Paste a device id.", true); send("/api/admin/uni/device", { dev, clear: true }, "Device unblocked"); });
+}
+
+
+/* ============================================================ homebase: families, invite codes, announcements, grounding */
+async function homebaseTab() {
+  const [f, bl] = await Promise.all([call("/hb/api/admin/families"), call("/hb/api/admin/blocks")]);
+  const when = (t) => (t ? ago(t) : "never");
+  $("#page").innerHTML = `<div class="card"><h2>Homebase 🏠 <small class="muted">${f.families.length} ${f.families.length === 1 ? "family" : "families"}</small></h2>
+      <p class="muted">Everything here works on any family, as the owner. Everything you do is announced in that family's chat, so nothing is hidden from them.</p>
+      <div class="row"><button class="btn primary" id="hb-all" type="button">📢 Announce to every family</button></div></div>
+    ${f.families.map((fam) => `<div class="card fam" data-fam="${fam.id}"><h3><span>${esc(fam.name)} <small class="muted">#${fam.id}</small></span>
+        <span class="row"><button class="btn small" data-act="inv" data-role="child">Child invite code</button><button class="btn small" data-act="inv" data-role="parent">Parent invite code</button><button class="btn small primary" data-act="ann">📢 Announce</button></span></h3>
+      ${fam.members.map((m) => `<div class="mrow"><span>${esc(m.emoji)}</span><b class="grow">${esc(m.name)} <small class="muted">${m.role}</small></b>
+        <small class="muted">seen ${when(m.last_seen)}${m.devices ? " · " + m.devices + " linked device" + (m.devices > 1 ? "s" : "") : ""}</small>
+        ${m.lock ? '<span class="tag amber">locked</span>' : ""}${(m.blocks || []).map((b) => `<span class="tag bad">${esc(b.label)}</span>`).join("")}
+        ${m.role === "child" ? `<button class="btn small" data-act="ground" data-id="${m.id}" data-name="${esc(m.name)}">🚫 Ground apps</button>` : ""}</div>`).join("")}</div>`).join("") || '<div class="card"><p class="muted">No families yet.</p></div>'}
+    <div class="card"><h2>Grounded apps now <small class="muted">${bl.blocks.length}</small></h2>${bl.blocks.map((b) => `<div class="logrow"><span><b>${esc(b.label)}</b> for ${esc(b.child)} <small class="muted">until ${new Date(b.until * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></span><button class="btn small bad" data-lift="${b.id}">Lift now</button></div>`).join("") || '<p class="muted">Nothing is grounded.</p>'}</div>`;
+  const announce = async (famId, label) => {
+    const text = await ask({ title: `Announce to ${label}`, text: "It appears in the family chat and as a notification on every device.", ok: "Send", field: { label: "Announcement", area: true, max: 500, hint: "e.g. Pizza night on Friday!" } });
+    if (!text || !text.trim()) return;
+    try { const d = await call("/hb/api/admin/announce", "POST", { family_id: famId, text }); toast(`Sent to ${d.families} ${d.families === 1 ? "family" : "families"}`); } catch (e) { toast(e.message, true); }
+  };
+  $("#hb-all").onclick = () => announce("*", "every family");
+  $("#page").onclick = async (e) => {
+    const lift = e.target.closest("[data-lift]");
+    if (lift) { try { await call(`/hb/api/admin/blocks/${lift.dataset.lift}`, "DELETE"); toast("Lifted"); render(); } catch (x) { toast(x.message, true); } return; }
+    const b = e.target.closest("[data-act]"); if (!b) return; const card = b.closest("[data-fam]"), fid = card && +card.dataset.fam, fam = f.families.find((x) => x.id === fid);
+    if (b.dataset.act === "ann") announce(fid, fam.name);
+    else if (b.dataset.act === "inv") {
+      try {
+        const d = await call("/hb/api/admin/invite", "POST", { family_id: fid, role: b.dataset.role });
+        await openDialog(`<h3>Invite code for ${esc(d.family)}</h3><p class="muted">A ${d.role} joins with this. It works once and lasts 24 hours. They enter it in Homebase on their phone or laptop.</p><div class="code">${esc(d.code)}</div>
+          <div class="row end"><button class="btn" id="i-copy" type="button">Copy</button><button class="btn primary" id="i-ok" type="button">Done</button></div>`, (finish) => {
+          $("#i-copy").onclick = () => { navigator.clipboard?.writeText(d.code); toast("Copied"); }; $("#i-ok").onclick = () => finish(true); });
+      } catch (x) { toast(x.message, true); }
+    } else if (b.dataset.act === "ground") {
+      const apps = await ask({ title: `Ground apps for ${b.dataset.name}`, text: "Names of apps or websites, separated by commas.", ok: "Next", field: { label: "Apps", hint: "e.g. roblox, minecraft, tiktok" } });
+      if (!apps || !apps.trim()) return;
+      const mins = await ask({ title: "For how long?", text: "In minutes (5 to 1440).", ok: "Ground them", field: { label: "Minutes", type: "number", value: "60" } });
+      if (!mins) return;
+      try { const d = await call("/hb/api/admin/blocks", "POST", { member_id: +b.dataset.id, minutes: +mins, apps: apps.split(",").map((a) => ({ key: a.trim().toLowerCase(), label: a.trim() })).filter((a) => a.key) }); toast(d.ok ? "Grounded: " + d.apps.join(", ") : "Nothing to ground.", !d.ok); render(); } catch (x) { toast(x.message, true); }
+    }
+  };
 }

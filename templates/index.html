@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0a0a0b">
-  <title>Control</title>
+  <title>Hacker Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/control.css?v={{ v }}">
   <script defer src="/static/control.js?v={{ v }}"></script>
@@ -13,7 +13,7 @@
 <body data-configured="{{ 'yes' if configured else 'no' }}">
   <main class="login" id="login" hidden>
     <form class="login-card" id="login-form" autocomplete="off">
-      <div class="brand"><span class="logo">◆</span><div><b>Control</b><small>Private owner panel · every app</small></div></div>
+      <div class="brand"><span class="logo">&gt;_</span><div><b>Hacker Panel</b><small>Private owner panel · every app</small></div></div>
       {% if not configured %}
       <p class="note">One setup step first. On the server add <b>CONTROL_PASSWORD</b>, <b>CRAMLY_URL</b> and <b>ADMIN_KEY</b> (the same one Cramly uses), then redeploy.</p>
       {% endif %}
@@ -25,9 +25,9 @@
 
   <div class="shell" id="shell" hidden>
     <header class="bar">
-      <div class="brand"><span class="logo">◆</span><div><b>Control</b><small id="health">Checking…</small></div></div>
+      <div class="brand"><span class="logo">&gt;_</span><div><b>Hacker Panel</b><small id="health">Checking…</small></div></div>
       <nav class="tabs" id="tabs">
-        <button data-tab="apps" class="on">All apps</button><button data-tab="overview">Cramly</button><button data-tab="requests" id="tab-req">Inbox<i class="badge" id="req-badge" hidden></i></button><button data-tab="accounts">Accounts</button><button data-tab="links">Links</button>
+        <button data-tab="apps" class="on">All apps</button><button data-tab="homebase">Homebase</button><button data-tab="overview">Cramly</button><button data-tab="requests" id="tab-req">Inbox<i class="badge" id="req-badge" hidden></i></button><button data-tab="accounts">Accounts</button><button data-tab="links">Links</button>
       </nav>
       <button class="btn small" id="logout" type="button">Sign out</button>
     </header>
