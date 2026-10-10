@@ -109,3 +109,5 @@ input, textarea, select { background: #000; border-color: #0f3a1d; color: #c9ffd
 .dot.green { background: #00ff7f; box-shadow: 0 0 8px #00ff7f; } .tag { font-family: var(--sans); } .note { background: #0b1a05; color: #d6ff3d; }
 .toast { background: #04120a; color: #00ff7f; border: 1px solid #00ff7f; font-family: var(--sans); }
 ::selection { background: #00ff7f; color: #000; }
+
+.chips.grapps { max-height: 170px; overflow-y: auto; } .chips button.on { background: #00ff7f; color: #001a0a; box-shadow: 0 0 12px -3px rgba(0,255,127,.7); }

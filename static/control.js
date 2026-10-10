@@ -418,11 +418,31 @@ async function homebaseTab() {
           $("#i-copy").onclick = () => { navigator.clipboard?.writeText(d.code); toast("Copied"); }; $("#i-ok").onclick = () => finish(true); });
       } catch (x) { toast(x.message, true); }
     } else if (b.dataset.act === "ground") {
-      const apps = await ask({ title: `Ground apps for ${b.dataset.name}`, text: "Names of apps or websites, separated by commas.", ok: "Next", field: { label: "Apps", hint: "e.g. roblox, minecraft, tiktok" } });
-      if (!apps || !apps.trim()) return;
-      const mins = await ask({ title: "For how long?", text: "In minutes (5 to 1440).", ok: "Ground them", field: { label: "Minutes", type: "number", value: "60" } });
-      if (!mins) return;
-      try { const d = await call("/hb/api/admin/blocks", "POST", { member_id: +b.dataset.id, minutes: +mins, apps: apps.split(",").map((a) => ({ key: a.trim().toLowerCase(), label: a.trim() })).filter((a) => a.key) }); toast(d.ok ? "Grounded: " + d.apps.join(", ") : "Nothing to ground.", !d.ok); render(); } catch (x) { toast(x.message, true); }
+      const mem = fam.members.find((x) => x.id === +b.dataset.id);
+      groundPicker(+b.dataset.id, b.dataset.name, (mem && mem.apps) || []);
     }
   };
+}
+
+
+const GROUND_COMMON = ["Roblox", "Minecraft", "Fortnite", "YouTube", "TikTok", "Netflix", "Discord", "Chrome", "Steam", "Epic Games"];
+function groundPicker(id, name, apps) {
+  const byKey = {}; apps.forEach((a) => { byKey[a.key] = a.label; }); GROUND_COMMON.forEach((n) => { const k = n.toLowerCase(); if (!byKey[k]) byKey[k] = n; });
+  const names = Object.entries(byKey).map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label));
+  const picked = new Set(); let mins = 60;
+  openDialog(`<h3>🚫 Ground apps for ${esc(name)}</h3><p class="muted">${apps.length ? apps.length + " apps on their computer" : "No device linked yet — type a name below, or link their computer first."} Pick what to block, and for how long.</p>
+    <div class="chips grapps" id="g-apps">${names.map((n) => `<button type="button" data-k="${esc(n.key)}">${esc(n.label)}</button>`).join("")}</div>
+    <label>Or another app/website name<input id="g-other" placeholder="e.g. valorant"></label>
+    <label>For how long</label><div class="chips" id="g-len">${[[30, "30 min"], [60, "1 hour"], [120, "2 h"], [240, "4 h"], [720, "12 h"], [1440, "Tomorrow"]].map(([n, t]) => `<button type="button" data-m="${n}" class="${n === 60 ? "on" : ""}">${t}</button>`).join("")}</div>
+    <div class="row end"><button class="btn" id="g-no" type="button">Cancel</button><button class="btn primary" id="g-ok" type="button">Ground them</button></div>`, (finish) => {
+    $("#g-apps").addEventListener("click", (e) => { const x = e.target.closest("[data-k]"); if (!x) return; const k = x.dataset.k; picked.has(k) ? picked.delete(k) : picked.add(k); x.classList.toggle("on", picked.has(k)); });
+    $("#g-len").addEventListener("click", (e) => { const x = e.target.closest("[data-m]"); if (!x) return; mins = +x.dataset.m; $$("#g-len [data-m]").forEach((y) => y.classList.toggle("on", y === x)); });
+    $("#g-no").addEventListener("click", () => finish(null));
+    $("#g-ok").addEventListener("click", async () => {
+      const other = $("#g-other").value.trim();
+      const list = [...[...picked].map((k) => ({ key: k, label: byKey[k] || k })), ...(other ? [{ key: other.toLowerCase(), label: other }] : [])];
+      if (!list.length) { toast("Pick at least one app.", true); return; }
+      try { const d = await call("/hb/api/admin/blocks", "POST", { member_id: id, minutes: mins, apps: list }); toast(d.ok ? "Grounded: " + d.apps.join(", ") : "Nothing matched.", !d.ok); finish(true); render(); } catch (x) { toast(x.message, true); }
+    });
+  });
 }
