@@ -314,7 +314,7 @@ async function requestsTab() {
 
 
 /* ============================================================ all apps: switch off, message, troll, block, status */
-const NAMES = { cramly: "Cramly", homebase: "Homebase", alibi: "Alibi", scout: "Scout", unwritten: "Unwritten", cookify: "Cookify", crosswind: "Crosswind", platter: "Platter", tripmate: "Tripmate", showcase: "Showcase" };
+const NAMES = { cramly: "Cramly", homebase: "Homebase", alibi: "Alibi", scout: "Scout", unwritten: "Unwritten", cookify: "Cookify", crosswind: "Crosswind", platter: "Platter", tripmate: "Tripmate", showcase: "Showcase", womanten: "Womanten" };
 const EFFECT_LABEL = { confetti: "🎉 Confetti", flip: "🙃 Flip upside down", shake: "🫨 Shake", rainbow: "🌈 Rainbow colours", disco: "🪩 Disco flash", spin: "🌀 Spin once", emoji: "🤪 Emoji rain", fakecrash: "💥 Fake crash", blur: "😵 Blur", typewriter: "⌨️ Somebody is typing" };
 async function appsTab() {
   const u = await call("/api/admin/uni");
