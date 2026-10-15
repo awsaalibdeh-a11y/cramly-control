@@ -37,7 +37,7 @@ APP_URLS = {                                                       # what "is it
     "cramly": "https://cramly-twz5.onrender.com/healthz", "homebase": "https://homebase-family.onrender.com/health", "alibi": "https://alibi-d9tn.onrender.com/",
     "scout": "https://scout-15t6.onrender.com/", "unwritten": "https://unwritten-dulm.onrender.com/", "cookify": "https://cookify-6auu.onrender.com/",
     "crosswind": "https://crosswind-w8g9.onrender.com/", "platter": "https://platter-87b0.onrender.com/", "tripmate": "https://tripmate-yecg.onrender.com/",
-    "showcase": "https://showcase-hub-pu62.onrender.com/", "womanten": "https://womanten.onrender.com/health",
+    "showcase": "https://showcase-hub-pu62.onrender.com/", "womanten": "https://womanten.onrender.com/health", "whatif": "https://whatif-kkq1.onrender.com/health",
 }
 _probe = {"at": 0, "data": {}}
 _tries = {}
